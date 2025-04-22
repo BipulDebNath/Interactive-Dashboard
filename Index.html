@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Sales Performance Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #1a1a2e; /* Deeper dark background */
+            color: #f8f8f2; /* Light text */
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh; /* Ensure footer stays at the bottom */
+        }
+        .dashboard-container {
+            background-color: #282a36; /* Darker container */
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+            width: 95%;
+            max-width: 1400px;
+            margin: 20px auto 60px auto; /* Add margin for better spacing */
+            flex-grow: 1; /* Allow container to grow and push footer down */
+        }
+        .dashboard-header {
+            background: linear-gradient(90deg, #44475a 0%, #6272a4 100%); /* Attractive gradient */
+            color: #f8f8f2;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .dashboard-header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            letter-spacing: 1px;
+        }
+        .interactive-controls {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #44475a; /* Dark interactive section */
+            border-radius: 8px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .control-group label {
+            color: #f8f8f2;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+        select, input[type="checkbox"], input[type="range"] {
+            padding: 8px;
+            border: 1px solid #6272a4;
+            border-radius: 4px;
+            background-color: #3b3d4d;
+            color: #f8f8f2;
+            font-size: 0.9em;
+        }
+        .visualization-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 20px;
+        }
+        .visualization-card {
+            background-color: #44475a; /* Darker card background */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .visualization-card h3 {
+            margin-top: 0;
+            color: #f8f8f2;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #8be9fd; /* Accent color */
+            padding-bottom: 8px;
+        }
+        .dashboard-footer {
+            background-color: #3b3d4d;
+            color: #6272a4;
+            padding: 15px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2);
+        }
+        #upload-trigger {
+            padding: 10px 20px;
+            background-color: #8be9fd; /* Accent button color */
+            color: #282a36; /* Dark text on accent */
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        #upload-trigger:hover {
+            background-color: #a4ffff;
+            color: #1a1a2e;
+        }
+        #file-input {
+            display: none;
+        }
+        #dashboard-caption {
+            color: #6272a4;
+            margin-top: 25px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>Sales Performance Overview</h1>
+            <p style="color: #bd93f9; font-size: 1.1em;">Analyze your sales data with interactive visualizations.</p>
+        </div>
+        <div class="interactive-controls">
+            <div class="control-group">
+                <label for="category-filter">Filter by Category:</label>
+                <select id="category-filter">
+                    <option value="">All Categories</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="gender-filter">Filter by Gender:</label>
+                <select id="gender-filter">
+                    <option value="">All Genders</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="discount-filter">Show Discount Applied:</label>
+                <input type="checkbox" id="discount-filter">
+            </div>
+            <div class="control-group">
+                <label for="rating-slider">Min Review Rating:</label>
+                <input type="range" id="rating-slider" min="1" max="5" value="1">
+                <span id="slider-value">1</span>
+            </div>
+        </div>
+        <div class="visualization-grid">
+            <div class="visualization-card">
+                <h3>Total Purchase Amount</h3>
+                <div id="total-purchase-amount"></div>
+            </div>
+            <div class="visualization-card">
+                <h3>Top Selling Categories</h3>
+                <div id="top-categories"></div>
+            </div>
+            <div class="visualization-card">
+                <h3>Payment Method Distribution</h3>
+                <div id="payment-distribution"></div>
+            </div>
+            <div class="visualization-card">
+                <h3>Purchase Frequency</h3>
+                <div id="purchase-frequency"></div>
+            </div>
+            <div class="visualization-card">
+                <h3>Review Rating Distribution</h3>
+                <div id="review-distribution"></div>
+            </div>
+            <div class="visualization-card">
+                <h3>Average Purchase Amount by Location</h3>
+                <div id="avg-purchase-by-location"></div>
+            </div>
+        </div>
+        <p id="dashboard-caption">Interactive dashboard providing insights into consumer shopping trends and retail purchasing behaviors.</p>
+    </div>
+    <div class="dashboard-footer">
+        <input type="file" id="file-input" accept=".json">
+        <button id="upload-trigger">Upload Sales Data</button>
+    </div>
+
+    <script>
+        let allData = []; // Store the original data
+
+        const uploadTrigger = document.getElementById('upload-trigger');
+        const fileInput = document.getElementById('file-input');
+        const categoryFilter = document.getElementById('category-filter');
+        const genderFilter = document.getElementById('gender-filter');
+        const discountFilter = document.getElementById('discount-filter');
+        const ratingSlider = document.getElementById('rating-slider');
+        const sliderValueSpan = document.getElementById('slider-value');
+
+        uploadTrigger.addEventListener('click', () => {
+            console.log("Upload button clicked!"); // Debug: Check if button click is detected
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', handleFile);
+
+        function handleFile(event) {
+            console.log("handleFile function called"); // Debug: Check if this function is called
+            const file = event.target.files[0];
+            console.log("Selected file:", file); // Debug: Log the file object
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    console.log("File loaded:", e.target.result); // Debug: Log file content
+                    try {
+                        const jsonData = JSON.parse(e.target.result);
+                        console.log("JSON parsed successfully:", jsonData); // Debug: Log parsed JSON
+                        allData = jsonData;
+                        populateFilters(jsonData);
+                        generateDashboard(jsonData);
+                    } catch (error) {
+                        alert('Error parsing JSON file.');
+                        console.error('JSON Parsing Error:', error);
+                    }
+                }
+                reader.readAsText(file);
+                console.log("Reading file as text..."); // Debug: Log before reading
+            } else {
+                console.log("No file selected."); // Debug: Handle case where no file is selected
+            }
+        }
+
+        categoryFilter.addEventListener('change', applyFilters);
+        genderFilter.addEventListener('change', applyFilters);
+        discountFilter.addEventListener('change', applyFilters);
+        ratingSlider.addEventListener('input', function() {
+            sliderValueSpan.textContent = this.value;
+            applyFilters();
+        });
+
+        function populateFilters(data) {
+            const categories = [...new Set(data.map(item => item['Category']))];
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                categoryFilter.appendChild(option);
+            });
+        }
+
+        function applyFilters() {
+            let filteredData = [...allData];
+
+            const selectedCategory = categoryFilter.value;
+            if (selectedCategory) {
+                filteredData = filteredData.filter(item => item['Category'] === selectedCategory);
+            }
+
+            const selectedGender = genderFilter.value;
+            if (selectedGender) {
+                filteredData = filteredData.filter(item => item['Gender'] === selectedGender);
+            }
+
+            if (discountFilter.checked) {
+                filteredData = filteredData.filter(item => item['Discount Applied'] === 'Yes');
+            }
+
+            const minRating = parseInt(ratingSlider.value);
+            filteredData = filteredData.filter(item => item['Review Rating'] >= minRating);
+
+            generateDashboard(filteredData);
+        }
+
+        function generateDashboard(data) {
+            // --- Total Purchase Amount ---
+            const totalPurchase = data.reduce((sum, item) => sum + item['Purchase Amount (USD)'], 0);
+            Plotly.newPlot('total-purchase-amount', [{
+                value: totalPurchase,
+                type: "indicator",
+                mode: "number",
+                title: { text: "Total Sales (USD)" },
+                number: { prefix: "$" }
+            }], {
+                paper_bgcolor: "rgba(0,0,0,0)",
+                plot_bgcolor: "rgba(0,0,0,0)",
+                font: { color: "#f8f8f2", size: 24 }
+            });
+
+            // --- Top Selling Categories ---
+            const categoryCounts = {};
+            data.forEach(item => {
+                const category = item['Category'];
+                categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+            });
+            const sortedCategories = Object.entries(categoryCounts).sort(([, a], [, b]) => b - a).slice(0, 5);
+            const topCategoryNames = sortedCategories.map(item => item[0]);
+            const topCategoryValues = sortedCategories.map(item => item[1]);
+            Plotly.newPlot('top-categories', [{
+                x: topCategoryNames,
+                y: topCategoryValues,
+                type: 'bar',
+                marker: { color: ['#8be9fd', '#ff79c6', '#bd93f9', '#50fa7b', '#f1fa8c'] }
+            }], {
+                paper_bgcolor: "rgba(0,0,0,0)",
+                plot_bgcolor: "rgba(0,0,0,0)",
+                font: { color: "#f8f8f2" },
+                title: { text: 'Top 5 Categories by Purchase Count', font: { color: '#f8f8f2' } },
+                xaxis: { color: '#6272a4', title: 'Category' },
+                yaxis: { color: '#6272a4', title: 'Number of Purchases' }
+            });
+
+            // --- Payment Method Distribution ---
+            const paymentCounts = {};
+            data.forEach(item => {
+                const payment = item['Payment Method'];
+                paymentCounts[payment] = (paymentCounts[payment] || 0) + 1;
+            });
+            const paymentMethods = Object.keys(paymentCounts);
+            const paymentValues = Object.values(paymentCounts);
+            Plotly.newPlot('payment-distribution', [{
+                labels: paymentMethods,
+                values: paymentValues,
+                type: 'pie',
+                marker: { colors: ['#ffb86c', '#f8f8f2', '#8be9fd', '#bd93f9', '#50fa7b'] },
+                textinfo: 'percent',
+                textoutside: true,
+                automargin: true
+            }], {
+                paper_bgcolor: "rgba(0,0,0,0)",
+                plot_bgcolor: "rgba(0,0,0,0)",
+                font: { color: "#f8f8f2" },
+                title: { text: 'Payment Method Distribution', font: { color: '#f8f8f2' } },
+                legend: { font: { color: '#6272a4' } }
+            });
+
+            // --- Purchase Frequency ---
+            const frequencyCounts = {};
+            data.forEach(item => {
+                const frequency = item['Frequency of Purchases'];
+                frequencyCounts[frequency] = (frequencyCounts[frequency] || 0) + 1;
+            });
+            const frequencies = Object.keys(frequencyCounts);
+            const frequencyValues = Object.values(frequencyCounts);
+            Plotly.newPlot('purchase-frequency', [{
+                x: frequencies,
+                y: frequencyValues,
+                type: 'bar',
+                marker: { color: ['#ff79c6', '#8be9fd', '#f1fa8c', '#50fa7b', '#bd93f9'] }
+            }], {
+                paper_bgcolor: "rgba(0,0,0,0)",
+                plot_bgcolor: "rgba(0,0,0,0)",
+                font: { color: "#f8f8f2" },
+                title: { text: 'Frequency of Purchases', font: { color: '#f8f8f2' } },
+                xaxis: { color: '#6272a4', title: 'Frequency' },
+                yaxis: { color: '#6272a4', title: 'Number of Customers' }
+            });
+
+            // --- Review Rating Distribution ---
+            const ratingCounts = {};
+            data.forEach(item => {
+                const rating = Math.round(item['Review Rating']);
+                ratingCounts[rating] = (ratingCounts[rating] || 0) + 1;
+            });
+            const ratings = Object.keys(ratingCounts).sort();
+            const ratingValues = Object.values(ratingCounts);
+            Plotly.newPlot('review-distribution', [{
+                x: ratings,
+                y: ratingValues,
+                type: 'scatter',
+                mode: 'lines+markers',
+                line: { color: '#f8f8f2' },
+                marker: { size: 8, color: '#8be9fd' }
+            }], {
+                paper_bgcolor: "rgba(0,0,0,0)",
+                plot_bgcolor: "rgba(0,0,0,0)",
+                font: { color: "#f8f8f2" },
+                title: { text: 'Customer Review Rating Distribution', font: { color: '#f8f8f2' } },
+                xaxis: { title: 'Rating', color: '#6272a4', tickvals: [1, 2, 3, 4, 5] },
+                yaxis: { title: 'Number of Reviews', color: '#6272a4' }
+            });
+
+            // --- Average Purchase Amount by Location ---
+            const locationData = {};
+            data.forEach(item => {
+                const location = item['Location'];
+                locationData[location] = locationData[location] || { sum: 0, count: 0 };
+                locationData[location].sum += item['Purchase Amount (USD)'];
+                locationData[location].count += 1;
+            });
+            const locations = Object.keys(locationData);
+            const avgPurchase = locations.map(loc => locationData[loc].sum / locationData[loc].count);
+            Plotly.newPlot('avg-purchase-by-location', [{
+                x: locations,
+                y: avgPurchase,
+                type: 'bar',
+                marker: { color: '#bd93f9' }
+            }], {
+                paper_bgcolor: "rgba(0,0,0,0)",
+                plot_bgcolor: "rgba(0,0,0,0)",
+                font: { color: "#f8f8f2" },
+                title: { text: 'Average Purchase Amount by Location', font: { color: '#f8f8f2' } },
+                xaxis: { color: '#6272a4', title: 'Location' },
+                yaxis: { color: '#6272a4', title: 'Average Purchase (USD)' }
+            });
+        }
+    </script>
+</body>
+</html>
